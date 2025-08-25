@@ -1,6 +1,6 @@
 import os
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_extract
+from pyspark.sql.functions import col, regexp_extract, when
 
 spark = SparkSession.builder \
     .appName("TdH") \
@@ -17,14 +17,24 @@ df_campaigns.show()
 df_campaigns.printSchema()
 
 
-""" # Read CSV file
+# Read donations CSV file & process columns
 csv_path = os.path.join(os.path.dirname(__file__), "../data/b5b43410-9417-4620-9db6-bf09a965d2ed.csv")
 df_donations = spark.read.csv(csv_path, header=True, inferSchema=True)
+df_donations = df_donations.withColumn(
+    "transaction_fee",
+    when(col("transaction_fee") == "NA", None).otherwise(col("transaction_fee")).cast("double")
+).withColumn(
+    "donation_amount",
+    when(col("donation_amount") == "NA", None).otherwise(col("donation_amount")).cast("double")
+)
 df_donations.show()
+df_donations.printSchema()
 
-# Read JSON file
+# Read donors JSON file & process columns
 json_path = os.path.join(os.path.dirname(__file__), "../data/745587b9-775e-45e3-b865-41c2b92b7d42.json")
 df_donors = spark.read.json(json_path)
-df_donors.show() """
+df_donors = df_donors.withColumn("registration_date", col("registration_date").cast("timestamp"))
+df_donors.show()
+df_donors.printSchema()
 
 spark.stop()
