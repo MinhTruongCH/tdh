@@ -1,6 +1,6 @@
 import os
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, regexp_extract, when
+from pyspark.sql.functions import col, regexp_extract, when, expr
 
 spark = SparkSession.builder \
     .appName("TdH") \
@@ -22,10 +22,10 @@ csv_path = os.path.join(os.path.dirname(__file__), "../data/b5b43410-9417-4620-9
 df_donations = spark.read.csv(csv_path, header=True, inferSchema=True)
 df_donations = df_donations.withColumn(
     "transaction_fee",
-    when(col("transaction_fee") == "NA", None).otherwise(col("transaction_fee")).cast("double")
+    expr("try_cast(transaction_fee as double)")
 ).withColumn(
     "donation_amount",
-    when(col("donation_amount") == "NA", None).otherwise(col("donation_amount")).cast("double")
+    expr("try_cast(donation_amount as double)")
 )
 df_donations.show()
 df_donations.printSchema()
@@ -36,5 +36,21 @@ df_donors = spark.read.json(json_path)
 df_donors = df_donors.withColumn("registration_date", col("registration_date").cast("timestamp"))
 df_donors.show()
 df_donors.printSchema()
+
+# Create temp views for SQL queries
+df_campaigns.createOrReplaceTempView("campaigns")
+df_donations.createOrReplaceTempView("donations")
+df_donors.createOrReplaceTempView("donors")
+
+# Average LTV of donors
+spark.sql("""
+  WITH donor_ltv AS (
+  SELECT donor_id, SUM(donation_amount) AS ltv
+  FROM donations
+  GROUP BY donor_id
+)
+SELECT AVG(ltv) AS avg_donor_ltv
+FROM donor_ltv;
+""").show()
 
 spark.stop()

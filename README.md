@@ -32,7 +32,7 @@ Your first task is to get your hands on the data and understand by yourself what
 1.  Load the data from the CSV, Parquet, and JSON files.
 2.  Perform necessary cleaning and transformations.
 
-**Presentation**:
+**Presentation**: L
 - You should include a data model diagram in the presentation to explain the data model
 
 ---
