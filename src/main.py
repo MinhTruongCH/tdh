@@ -1,6 +1,7 @@
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, regexp_extract, when, expr
+import pandas as pd
 
 spark = SparkSession.builder \
     .appName("TdH") \
@@ -53,4 +54,30 @@ SELECT AVG(ltv) AS avg_donor_ltv
 FROM donor_ltv;
 """).show()
 
-spark.stop()
+# Specific retention 2022 → 2023 (percentage)
+spark.sql("""
+  WITH yearly AS (
+  SELECT DISTINCT donor_id, YEAR(donation_date) AS yr
+  FROM donations
+),
+base AS (SELECT donor_id FROM yearly WHERE yr = 2022),
+retained AS (
+  SELECT b.donor_id
+  FROM base b
+  JOIN yearly y ON y.donor_id = b.donor_id AND y.yr = 2023
+)
+SELECT
+  ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM base), 2) AS retention_rate_pct_2022_to_2023
+FROM retained;
+""").show()
+
+# Causal impact of June 1st 2024 social media campaign
+
+# 1) Get the data
+spark.sql("""
+  SELECT
+  CASE WHEN donation_date < '2024-06-01' THEN 'pre' ELSE 'post' END AS period,
+  COUNT(*) AS donations_cnt
+FROM donations
+GROUP BY period;
+""").show()
